@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartPark | Parking Management</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/"><span class="brand-icon">P</span> Smart<span>Park</span></a>
+  <div class="top-right"><span class="status-dot"></span> Parking system online <div class="admin-avatar">AD</div></div>
+</header>
+<main class="container">
+  <section class="intro">
+    <div><p class="overline">PARKING MANAGEMENT SYSTEM</p><h1>Dashboard</h1><p class="muted">Monitor parking availability and manage vehicle entry and exit.</p></div>
+    <div class="location-chip">⌖ Bengaluru, India</div>
+  </section>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}<div class="messages">{% for category, message in messages %}<div class="alert {{ category }}">{{ message }}</div>{% endfor %}</div>{% endif %}
+  {% endwith %}
+
+  <section class="stats">
+    <article class="stat"><div class="stat-label">Total parking spots <span class="icon blue">▦</span></div><strong>{{ total }}</strong><small>Across all floors</small></article>
+    <article class="stat"><div class="stat-label">Available spots <span class="icon green">✓</span></div><strong>{{ available }}</strong><small class="green-text">Ready for vehicles</small></article>
+    <article class="stat"><div class="stat-label">Occupied spots <span class="icon orange">▣</span></div><strong>{{ occupied }}</strong><small>Currently parked</small></article>
+    <article class="stat"><div class="stat-label">Occupancy rate <span class="icon purple">%</span></div><strong>{{ ((occupied / total) * 100)|round|int if total else 0 }}%</strong><small>Parking capacity used</small></article>
+  </section>
+
+  <section class="main-grid">
+    <article class="panel">
+      <div class="panel-head"><div><h2>Parking floor overview</h2><p class="muted">Ground Floor · Slot status</p></div><div class="legend"><span><i class="available"></i> Free</span><span><i class="occupied"></i> Occupied</span></div></div>
+      <div class="spot-grid">
+        {% for spot in spots %}
+          <div class="spot {{ 'free' if spot.free else 'taken' }}">
+            <b>{{ spot.number }}</b><small>{{ spot.type.value }}</small>
+            <span>{{ 'Available' if spot.free else 'Occupied' }}</span>
+          </div>
+        {% endfor %}
+      </div>
+      <div class="rate-note">Parking rate: <b>₹{{ "%.2f"|format(rate) }} / hour</b></div>
+    </article>
+
+    <article class="panel">
+      <div class="panel-head"><div><h2>Vehicle entry</h2><p class="muted">Register a vehicle and generate a ticket</p></div><span class="entry-icon">↘</span></div>
+      <form action="{{ url_for('park_vehicle') }}" method="post" class="form">
+        <label for="licenseNumber">Vehicle registration number</label>
+        <input id="licenseNumber" name="licenseNumber" placeholder="e.g. KA01AB1234" required maxlength="20">
+        <label for="vehicleType">Vehicle type</label>
+        <select id="vehicleType" name="vehicleType">
+          <option>Car</option><option>Truck</option><option>Electric</option><option>Van</option><option>Motorbike</option>
+        </select>
+        <button class="primary-btn" type="submit">＋ Register vehicle &amp; park</button>
+      </form>
+      <div class="hint">A compatible free spot will be assigned automatically.</div>
+    </article>
+  </section>
+
+  <section class="panel tickets-panel">
+    <div class="panel-head"><div><h2>Active parking tickets</h2><p class="muted">Process payment when a vehicle exits</p></div><span class="count-pill">{{ active_tickets|length }} active</span></div>
+    {% if active_tickets %}
+      <div class="table-wrap"><table><thead><tr><th>Ticket</th><th>Vehicle</th><th>Type</th><th>Issued at</th><th>Checkout / Payment</th></tr></thead><tbody>
+      {% for ticket in active_tickets %}
+        <tr><td><b>{{ ticket.ticketNumber }}</b></td><td>{{ ticket.vehicle.licenseNumber }}</td><td>{{ ticket.vehicle.type.value }}</td><td>{{ ticket.issuedAt.strftime('%d %b %Y, %I:%M %p') }}</td>
+          <td><form class="checkout-form" action="{{ url_for('checkout', ticket_number=ticket.ticketNumber) }}" method="post">
+            <input type="number" name="hours" min="1" step="1" value="1" aria-label="Parking hours">
+            <select name="paymentMethod" aria-label="Payment method"><option value="cash">Cash</option><option value="card">Card</option></select>
+            <button class="pay-btn" type="submit">Pay &amp; exit</button>
+          </form></td></tr>
+      {% endfor %}
+      </tbody></table></div>
+    {% else %}
+      <div class="empty">There are no active tickets. Register a vehicle above to create one.</div>
+    {% endif %}
+  </section>
+
+  <footer>SmartPark · UML-based academic project prototype <span>Python + Flask</span></footer>
+</main>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
